@@ -94,10 +94,10 @@ with col3: st.markdown(f'<div class="metric-card"><p class="metric-title">Histor
 st.markdown("---")
 # 4. Tab Initialization (Explicit Index Assignment Design Pattern to resolve context crashes)
 all_tabs = st.tabs(["📅 FUTURE PROJECTIONS", "🌍 LEAGUE TABLES", "📜 ARCHIVE ROLLING BACKTESTER", "🔴 LIVE CENTRE"])
-tab_pred    = all_tabs[0]
-tab_tables  = all_tabs[1]
-tab_history = all_tabs[2]
-tab_live    = all_tabs[3]
+tab_pred    = all_tabs
+tab_tables  = all_tabs
+tab_history = all_tabs
+tab_live    = all_tabs
 
 # ---------------------------------------------------------------------
 # TAB 4: LIVE CENTRE MONITOR
@@ -184,7 +184,42 @@ with tab_pred:
             distance_map = {"Short (No Penalty)": 1.00, "Moderate (-1%)": 0.99, "Long (-2%)": 0.98, "Continental (-4%)": 0.96}
             dynamic_distance_penalty = distance_map[distance_tier]
             
-        res = engine.predict_match_probabilities(filtered_df, target["home_team"], target["away_team"], target_ts, baseline_goals, h_rest_days, a_rest_days, home_status, away_status, max_score_cap, vol_dampener)
+        # Wrapped in a defensive try-except context to isolate backend main_engine code failures safely
+        try:
+            res = engine.predict_match_probabilities(
+                filtered_df, 
+                target["home_team"], 
+                target["away_team"], 
+                target_ts, 
+                baseline_goals, 
+                h_rest_days, 
+                a_rest_days, 
+                home_status, 
+                away_status, 
+                max_score_cap, 
+                vol_dampener
+            )
+        except TypeError as signature_err:
+            st.error("❌ Prediction Signature Mismatch!")
+            st.info("The configuration parameters pass format does not match the definition inside your main_engine.py file script.")
+            st.code(f"Trace Details: {signature_err}")
+            res = {
+                "market_probabilities": {"1 (Home Win)": 0.33, "X (Draw)": 0.34, "2 (Away Win)": 0.33},
+                "lambdas": {"h2h_mods": [1.0, 1.0], "lam1_home": 1.000, "lam2_away": 1.000, "dixon_coles_tau": 1.000},
+                "optimal_bet_pick": "N/A",
+                "full_score_matrix": np.zeros((max_score_cap, max_score_cap))
+            }
+        except Exception as general_err:
+            st.error("❌ Calculation Matrix Runtime Computation Failure!")
+            st.info("The system backend module hit an unexpected error while calculating vector distributions.")
+            st.code(f"Trace Details: {general_err}")
+            res = {
+                "market_probabilities": {"1 (Home Win)": 0.33, "X (Draw)": 0.34, "2 (Away Win)": 0.33},
+                "lambdas": {"h2h_mods": [1.0, 1.0], "lam1_home": 1.000, "lam2_away": 1.000, "dixon_coles_tau": 1.000},
+                "optimal_bet_pick": "N/A",
+                "full_score_matrix": np.zeros((max_score_cap, max_score_cap))
+            }
+
         h_stats = engine.parse_live_team_averages(filtered_df, target["home_team"], target_ts, half_life_days, status_override=home_status)
         a_stats = engine.parse_live_team_averages(filtered_df, target["away_team"], target_ts, half_life_days, status_override=away_status)
         
