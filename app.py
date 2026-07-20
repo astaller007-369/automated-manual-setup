@@ -5,10 +5,10 @@ import pandas as pd
 import streamlit as st
 import main_engine as engine
 
-# 1. Framework Base Configuration
+# Set unified widescreen environment geometry configuration layout 
 st.set_page_config(page_title="Sisonke Bet Predictions", page_icon="⚽", layout="wide")
 
-# Android-Safe CSS String Map (Escaped to block token reader bleeding)
+# Native CSS injection string blocks telemetry and theme reader bleedout
 CUSTOM_DASHBOARD_STYLING = """
 <style>
 .stApp { background-color: #0b0f19; color: #f1f5f9; }
@@ -23,10 +23,9 @@ h3 { color: #facc15; font-weight: 700 !important; margin-top: 25px !important; b
 """
 st.markdown(CUSTOM_DASHBOARD_STYLING, unsafe_allow_html=True)
 
+# Render main system display banners safely
 st.write("<h1>Sis⚽nke Bet Predictions</h1>", unsafe_allow_html=True)
 st.caption("Master Automation Suite - Full Multi-League Balanced Dixon-Coles Poisson Framework")
-
-# 2. Sidebar Controls & Validation Schema
 with st.sidebar:
     st.markdown("### 📂 Data Control Room")
     uploaded_file = st.file_uploader("Upload Master Match CSV", type=["csv"])
@@ -46,10 +45,8 @@ with st.sidebar:
     is_valid_data, uploaded_leagues = False, []
     if uploaded_file is not None:
         try:
-            # Single-pass safe memory ingestion stream prevents reader token corruption
             uploaded_file.seek(0)
             full_validation_df = pd.read_csv(uploaded_file)
-            
             missing_cols = [col for col in REQUIRED_COLUMNS if col not in list(full_validation_df.columns)]
             if len(missing_cols) == 0:
                 st.success("✅ MASTER SCHEMA VALID")
@@ -58,7 +55,8 @@ with st.sidebar:
             else:
                 st.error("❌ MISSING SYMMETRICAL HEADERS")
                 for missing in missing_cols: st.code(f"⚠️ {missing}")
-        except Exception as e: st.error(f"Error: {e}")
+        except Exception as e: 
+            st.error(f"Error: {e}")
 
     if not is_valid_data or uploaded_file is None:
         st.info("👋 Upload your balanced master data CSV file in the sidebar to activate systems.")
@@ -75,8 +73,6 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### 🔄 Backtest Range Configuration")
     backtest_window = st.slider("Rolling Window Size (Days)", 90, 365, 180, 5)
-
-# 3. Data Ingestion & Scope Truncation
 raw_master_df = full_validation_df.copy()
 raw_master_df["match_timestamp"] = pd.to_datetime(raw_master_df["match_timestamp"])
 filtered_df = raw_master_df[raw_master_df["league_country"] == selected_league_filter].reset_index(drop=True)
@@ -93,26 +89,16 @@ with col1: st.markdown(f'<div class="metric-card"><p class="metric-title">{selec
 with col2: st.markdown(f'<div class="metric-card"><p class="metric-title">Historic Average Home Goals</p><p class="metric-value">{filtered_df["home_goals"].mean():.2f}</p></div>', unsafe_allow_html=True)
 with col3: st.markdown(f'<div class="metric-card"><p class="metric-title">Historic Average Away Goals</p><p class="metric-value">{filtered_df["away_goals"].mean():.2f}</p></div>', unsafe_allow_html=True)
 st.markdown("---")
-# 4. Tab Initialization (Strict Inline Unpacking Pattern for Android Mobile Server)
-# Commas force Python to extract each container item sequentially out of the layout tuple
+
 tab_pred, tab_tables, tab_history, tab_live = st.tabs(["📅 FUTURE PROJECTIONS", "🌍 LEAGUE TABLES", "📜 ARCHIVE ROLLING BACKTESTER", "🔴 LIVE CENTRE"])
 
-# ---------------------------------------------------------------------
-# TAB 4: LIVE CENTRE MONITOR
-# ---------------------------------------------------------------------
 with tab_live:
     st.info("Live data pipelines active. Processing balanced automated scraper telemetry feeds smoothly using Dixon-Coles parameters.")
 
-# ---------------------------------------------------------------------
-# TAB 2: LEAGUE TABLES GENERATOR
-# ---------------------------------------------------------------------
 with tab_tables:
     st.markdown(f"### Dynamic Standings Matrix: {selected_league_filter.upper()}")
     st.dataframe(engine.generate_dynamic_league_table(filtered_df), use_container_width=True)
 
-# ---------------------------------------------------------------------
-# TAB 3: ARCHIVE ROLLING BACKTESTER
-# ---------------------------------------------------------------------
 with tab_history:
     st.markdown("### 📜 Automated Rolling-Window Backtest & Mathematical Performance Validation")
     league_key = selected_league_filter.lower()
@@ -121,20 +107,14 @@ with tab_history:
     with st.spinner("Processing Chronological Rolling-Window Validations..."):
         try:
             backtest_results_df = engine.run_rolling_window_backtest(
-                df=filtered_df, 
-                baseline_goals=baseline_goals, 
-                window_days=backtest_window, 
-                evaluation_step_days=7, 
-                vol_dampener=vol_dampener
+                df=filtered_df, baseline_goals=baseline_goals, window_days=backtest_window, evaluation_step_days=7, vol_dampener=vol_dampener
             )
         except TypeError as param_err:
             st.error("❌ Backtester Parameter Mismatch Error!")
-            st.info("The dashboard layout parameters do not match your backend main_engine function signature definition.")
             st.code(f"Trace Details: {param_err}")
             backtest_results_df = pd.DataFrame()
         except Exception as inner_err:
             st.error("❌ Internal Engine Calculation Crash!")
-            st.info("The calculation script failed internally while filtering historical chronological dataframe matrix sequences.")
             st.code(f"Trace Details: {inner_err}")
             backtest_results_df = pd.DataFrame()
         
@@ -149,9 +129,6 @@ with tab_history:
         st.dataframe(backtest_results_df[["match_timestamp", "home_team", "away_team", "home_goals", "away_goals", "actual_outcome", "model_probability", "log_loss"]], use_container_width=True)
     else:
         st.warning("⚠️ Insufficient historical chronological date range to build the specified rolling window framework pool.")
-# ---------------------------------------------------------------------
-# TAB 1: FUTURE PROJECTIONS ENGINE
-# ---------------------------------------------------------------------
 with tab_pred:
     st.markdown("### 📋 Historic Database Overview")
     st.dataframe(filtered_df, use_container_width=True)
@@ -183,17 +160,9 @@ with tab_pred:
             
         try:
             res = engine.predict_match_probabilities(
-                historical_matches=filtered_df, 
-                home_team=target["home_team"], 
-                away_team=target["away_team"], 
-                current_timestamp=target_ts, 
-                baseline_goals=baseline_goals, 
-                home_rest_days=h_rest_days, 
-                away_rest_days=a_rest_days, 
-                home_status=home_status, 
-                away_status=away_status, 
-                max_score=max_score_cap, 
-                vol_dampener=vol_dampener
+                historical_matches=filtered_df, home_team=target["home_team"], away_team=target["away_team"], current_timestamp=target_ts, 
+                baseline_goals=baseline_goals, home_rest_days=h_rest_days, away_rest_days=a_rest_days, home_status=home_status, away_status=away_status, 
+                max_score=max_score_cap, vol_dampener=vol_dampener
             )
         except Exception as general_err:
             st.error("❌ Calculation Matrix Runtime Ingestion Failure!")
@@ -204,20 +173,11 @@ with tab_pred:
                 "raw_matrix": np.zeros((max_score_cap + 1, max_score_cap + 1))
             }
 
-        # Safe parameter pairing matches the main_engine.py configuration variables perfectly via strict keywords
         h_stats = engine.parse_live_team_averages(
-            df=filtered_df, 
-            team=target["home_team"], 
-            current_ts=target_ts, 
-            half_life_days=half_life_days, 
-            status_override=home_status
+            df=filtered_df, team=target["home_team"], current_ts=target_ts, half_life_days=half_life_days, status_override=home_status
         )
         a_stats = engine.parse_live_team_averages(
-            df=filtered_df, 
-            team=target["away_team"], 
-            current_ts=target_ts, 
-            half_life_days=half_life_days, 
-            status_override=away_status
+            df=filtered_df, team=target["away_team"], current_ts=target_ts, half_life_days=half_life_days, status_override=away_status
         )
         
         prob_home, prob_draw, prob_away = res["market_probabilities"]["1 (Home Win)"], res["market_probabilities"]["X (Draw)"], res["market_probabilities"]["2 (Away Win)"]
@@ -237,6 +197,10 @@ with tab_pred:
         with c_right:
             st.markdown('<div class="market-header">🎫 Calibrated Betting Ticket Slip</div>', unsafe_allow_html=True)
             derived_pick = "HOME WIN" if prob_home > prob_away and prob_home > prob_draw else ("AWAY WIN" if prob_away > prob_home and prob_away > prob_draw else "MATCH DRAW")
+            
+            h_bias = res['lambdas']['h2h_mods'][0]
+            a_bias = res['lambdas']['h2h_mods'][1]
+            
             ticket_txt = (
                 f"========================================\n"
                 f"        SISONKE BET ANALYTICS ENGINE    \n"
@@ -245,7 +209,7 @@ with tab_pred:
                 f"MATCH PROFILE : {target['home_team']} vs {target['away_team']}\n"
                 f"TIMESTAMP UTC : {target_ts.strftime('%Y-%m-%d %H:%M')}\n"
                 f"SQUAD ALIGN   : H: {home_status.upper()} | A: {away_status.upper()}\n"
-                f"H2H PSYCH BIAS: Home: {res['lambdas']['h2h_mods']:.2f}x | Away: {res['lambdas']['h2h_mods']:.2f}x\n"
+                f"H2H PSYCH BIAS: Home: {h_bias:.2f}x | Away: {a_bias:.2f}x\n"
                 f"----------------------------------------\n"
                 f"CALCULATED HOME EXPECTED (λ1) : {res['lambdas']['lam1_home']:.3f}\n"
                 f"CALCULATED AWAY EXPECTED (λ2) : {res['lambdas']['lam2_away']:.3f}\n"
@@ -284,9 +248,10 @@ with tab_pred:
             
         st.markdown("### 🧮 Dixon-Coles Probability Matrix Distribution Grid")
         grid_matrix = res.get("raw_matrix", np.zeros((max_score_cap + 1, max_score_cap + 1)))
+        
         grid_df = pd.DataFrame(
             grid_matrix, 
-            index=[f"Home {i}" for i in range(grid_matrix.shape)], 
-            columns=[f"Away {j}" for j in range(grid_matrix.shape)]
+            index=[f"Home {i}" for i in range(grid_matrix.shape[0])], 
+            columns=[f"Away {j}" for j in range(grid_matrix.shape[1])]
         )
         st.dataframe(grid_df.style.format("{:.4f}").background_gradient(cmap="Blues"), use_container_width=True)
