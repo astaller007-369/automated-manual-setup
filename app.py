@@ -32,7 +32,6 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### 🔍 Dataset Diagnostic Tool")
     
-    # CORRECTED SCHEMA VALIDATION BLOCK (Cross attacks scrubbed completely)
     REQUIRED_COLUMNS = [
         "league_country", "match_timestamp", "home_team", "away_team", 
         "home_goals", "away_goals", "home_shots", "away_shots", 
@@ -45,20 +44,28 @@ with st.sidebar:
     ]
     
     is_valid_data, uploaded_leagues = False, []
+    raw_master_df = None  
+    
     if uploaded_file is not None:
         try:
-            sample_df = pd.read_csv(uploaded_file, nrows=5)
-            missing_cols = [col for col in REQUIRED_COLUMNS if col not in list(sample_df.columns)]
+            # FIX: Execute a SINGLE file read operation into RAM memory to protect pointer buffer tracking
+            raw_master_df = pd.read_csv(uploaded_file)
+            uploaded_cols = list(raw_master_df.columns)
+            missing_cols = [col for col in REQUIRED_COLUMNS if col not in uploaded_cols]
+            
             if len(missing_cols) == 0:
                 st.success("✅ MASTER SCHEMA VALID")
                 is_valid_data = True
-                uploaded_leagues = sorted(list(pd.read_csv(uploaded_file, usecols=["league_country"])["league_country"].dropna().unique()))
+                uploaded_leagues = sorted(list(raw_master_df["league_country"].dropna().unique()))
             else:
                 st.error("❌ MISSING SYMMETRICAL HEADERS")
                 for missing in missing_cols: st.code(f"⚠️ {missing}")
-        except Exception as e: st.error(f"Error: {e}")
+                st.stop()
+        except Exception as e:
+            st.error(f"File Parse Error: {e}")
+            st.stop()
 
-    if not is_valid_data or uploaded_file is None:
+    if not is_valid_data or raw_master_df is None:
         st.info("👋 Upload your balanced master data CSV file in the sidebar to activate systems.")
         st.stop()
 
@@ -73,12 +80,11 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### 🔄 Backtest Range Configuration")
     backtest_window = st.slider("Rolling Window Size (Days)", 90, 365, 180, 5)
-    
     st.markdown("---")
     st.markdown("### 🚦 Backtest Run Control")
     activate_backtester = st.checkbox("Run Historical Backtester", value=False)
 
-raw_master_df = pd.read_csv(uploaded_file)
+# ----------------- DATA PRE-PROCESSING LAYER -----------------
 raw_master_df["match_timestamp"] = pd.to_datetime(raw_master_df["match_timestamp"])
 filtered_df = raw_master_df[raw_master_df["league_country"] == selected_league_filter].reset_index(drop=True)
 
@@ -87,6 +93,7 @@ if filtered_df.empty:
     st.stop()
 
 all_teams = sorted(list(set(filtered_df["home_team"].unique()) | set(filtered_df["away_team"].unique())))
+
 total_records = len(filtered_df)
 m_cols = st.columns(3)
 with m_cols: st.markdown(f'<div class="metric-card"><p class="metric-title">{selected_league_filter.upper()} Total Records Loaded</p><p class="metric-value">{total_records}</p></div>', unsafe_allow_html=True)
