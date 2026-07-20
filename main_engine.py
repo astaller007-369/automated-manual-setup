@@ -52,13 +52,14 @@ def calculate_rest_multiplier(days_rest):
     elif days_rest >= 4 and days_rest <= 6: return 1.00
     elif days_rest >= 7 and days_rest <= 10: return 1.04
     else: return 0.97
+
 def calculate_dynamic_home_advantage(df, current_ts):
     past_df = df[df["match_timestamp"] < current_ts]
     if past_df.empty: return 1.10, 0.90
     avg_h = past_df["home_goals"].mean()
     avg_a = past_df["away_goals"].mean()
     total_avg = (avg_h + avg_a) / 2
-    if total_avg == 0: return 1.10, 0.90
+    if total_avg == 0 or pd.isna(total_avg): return 1.10, 0.90
     return max(1.0, min(1.3, avg_h / total_avg)), max(0.7, min(1.0, avg_a / total_avg))
 
 def calculate_h2h_psychological_modifier(df, home, away, current_ts):
@@ -95,7 +96,6 @@ def calculate_dixon_coles_adjustment(h, a, lam1, lam2, tau):
     elif h == 0 and a == 1: return 1.0 + (lam2 * tau)
     elif h == 1 and a == 1: return 1.0 - tau
     return 1.0
-
 def parse_live_team_averages(df, team, current_ts, half_life_days=45, status_override="stable"):
     past = df[df["match_timestamp"] < current_ts]
     team_matches = past[(past["home_team"] == team) | (past["away_team"] == team)]
@@ -103,11 +103,13 @@ def parse_live_team_averages(df, team, current_ts, half_life_days=45, status_ove
     
     if games_played == 0:
         mod = SQUAD_TURNOVER_MATRIX.get(status_override, {"att_modifier": 1.0, "def_modifier": 1.0})
-        return {"games_played": 0, "att_strength_goals": 1.0 * mod["att_modifier"], "def_strength_goals": 1.0 * mod["def_modifier"],
-                "avg_scored": 1.2, "avg_conceded": 1.2, "shots_factor": 12.0, "sot_factor": 4.5,
-                "aerial_threat_factor": 1.0, "aerial_vulnerability_factor": 1.0}
+        return {
+            "games_played": 0, "att_strength_goals": 1.0 * mod["att_modifier"], "def_strength_goals": 1.0 * mod["def_modifier"],
+            "avg_scored": 1.2, "avg_conceded": 1.2, "shots_factor": 12.0, "sot_factor": 4.5,
+            "aerial_threat_factor": 1.0, "aerial_vulnerability_factor": 1.0
+        }
                 
-    total_w, sum_gf, sum_ga, sum_shots, sum_sot, sum_headed = 0.0, 0, 0, 0, 0, 0
+    total_w, sum_gf, sum_ga, sum_shots, sum_sot, sum_headed = 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
     for _, row in team_matches.iterrows():
         days_ago = (current_ts - row["match_timestamp"]).days
         w = calculate_time_decay_weight(days_ago, half_life_days)
@@ -125,6 +127,7 @@ def parse_live_team_averages(df, team, current_ts, half_life_days=45, status_ove
     league_h = past["home_goals"].mean() if not past.empty else 1.4
     league_a = past["away_goals"].mean() if not past.empty else 1.2
     league_base = (league_h + league_a) / 2
+    if pd.isna(league_base) or league_base == 0: league_base = 1.3
     
     att_strength = avg_gf / league_base if league_base > 0 else 1.0
     def_strength = avg_ga / league_base if league_base > 0 else 1.0
@@ -135,10 +138,11 @@ def parse_live_team_averages(df, team, current_ts, half_life_days=45, status_ove
         "att_strength_goals": max(0.2, min(3.0, att_strength * squad_mod["att_modifier"])),
         "def_strength_goals": max(0.2, min(3.0, def_strength * squad_mod["def_modifier"])),
         "avg_scored": round(float(avg_gf), 2), "avg_conceded": round(float(avg_ga), 2),
-        "shots_factor": round(float(sum_shots / total_w), 2), "sot_factor": round(float(sum_sot / total_w), 2),
-        "aerial_threat_factor": max(0.5, min(2.0, (sum_headed / total_w) / max(0.1, league_base))),
+        "shots_factor": round(float(sum_shots / max(1e-5, total_w)), 2), "sot_factor": round(float(sum_sot / max(1e-5, total_w)), 2),
+        "aerial_threat_factor": max(0.5, min(2.0, (sum_headed / max(1e-5, total_w)) / max(0.1, league_base))),
         "aerial_vulnerability_factor": max(0.5, min(2.0, def_strength))
     }
+
 def generate_dynamic_league_table(df):
     if df.empty: return pd.DataFrame()
     clean_df = df.dropna(subset=["home_goals", "away_goals"])
@@ -164,7 +168,6 @@ def generate_dynamic_league_table(df):
     table_df.index += 1
     table_df.index.name = "Pos"
     return table_df
-
 def predict_match_probabilities(historical_matches, home_team, away_team, current_timestamp, baseline_goals, home_rest_days, away_rest_days, home_status="stable", away_status="stable", max_score=6, vol_dampener=1.0):
     home_hfa, away_hfa = calculate_dynamic_home_advantage(historical_matches, current_timestamp)
     home_rest_mod = calculate_rest_multiplier(home_rest_days)
