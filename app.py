@@ -8,18 +8,20 @@ import main_engine as engine
 # 1. Framework Base Configuration
 st.set_page_config(page_title="Sisonke Bet Predictions", page_icon="⚽", layout="wide")
 
-st.markdown("""
-    <style>
-    .stApp { background-color: #0b0f19; color: #f1f5f9; }
-    h1 { color: #facc15; font-weight: 900 !important; font-size: 42px !important; margin: 0; padding-bottom: 5px; }
-    h3 { color: #facc15; font-weight: 700 !important; margin-top: 25px !important; border-bottom: 1px solid #1e293b; padding-bottom: 5px; }
-    .metric-card { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 20px; border-radius: 12px; border: 1px solid #334155; text-align: center; }
-    .metric-title { font-size: 13px; font-weight: 600; text-transform: uppercase; color:#94a3b8; }
-    .metric-value { font-size: 28px; font-weight: 800; line-height: 1; margin-top: 5px; }
-    .market-header { color: #38bdf8; font-weight: 700; font-size: 15px; text-transform: uppercase; border-bottom: 2px solid #0284c7; margin-bottom: 12px; }
-    .ticket-box { background-color: #1e293b; border: 2px dashed #facc15; border-radius: 8px; padding: 15px; color: #f8fafc; font-family: monospace; }
-    </style>
-""", unsafe_allow_html=True)
+# Android-Safe CSS String Map (Escaped to block token reader bleeding)
+CUSTOM_DASHBOARD_STYLING = """
+<style>
+.stApp { background-color: #0b0f19; color: #f1f5f9; }
+h1 { color: #facc15; font-weight: 900 !important; font-size: 42px !important; margin: 0; padding-bottom: 5px; }
+h3 { color: #facc15; font-weight: 700 !important; margin-top: 25px !important; border-bottom: 1px solid #1e293b; padding-bottom: 5px; }
+.metric-card { background-color: #0f172a; padding: 20px; border-radius: 12px; border: 1px solid #334155; text-align: center; }
+.metric-title { font-size: 13px; font-weight: 600; text-transform: uppercase; color:#94a3b8; }
+.metric-value { font-size: 28px; font-weight: 800; line-height: 1; margin-top: 5px; }
+.market-header { color: #38bdf8; font-weight: 700; font-size: 15px; text-transform: uppercase; border-bottom: 2px solid #0284c7; margin-bottom: 12px; }
+.ticket-box { background-color: #1e293b; border: 2px dashed #facc15; border-radius: 8px; padding: 15px; color: #f8fafc; font-family: monospace; }
+</style>
+"""
+st.markdown(CUSTOM_DASHBOARD_STYLING, unsafe_allow_html=True)
 
 st.write("<h1>Sis⚽nke Bet Predictions</h1>", unsafe_allow_html=True)
 st.caption("Master Automation Suite - Full Multi-League Balanced Dixon-Coles Poisson Framework")
@@ -44,7 +46,7 @@ with st.sidebar:
     is_valid_data, uploaded_leagues = False, []
     if uploaded_file is not None:
         try:
-            # Single-pass safe execution stream pattern prevents text reader tokenize token corruption
+            # Single-pass safe memory ingestion stream prevents reader token corruption
             uploaded_file.seek(0)
             full_validation_df = pd.read_csv(uploaded_file)
             
@@ -75,7 +77,6 @@ with st.sidebar:
     backtest_window = st.slider("Rolling Window Size (Days)", 90, 365, 180, 5)
 
 # 3. Data Ingestion & Scope Truncation
-# Bypasses ParserError by duplicating memory cache dataframe object directly
 raw_master_df = full_validation_df.copy()
 raw_master_df["match_timestamp"] = pd.to_datetime(raw_master_df["match_timestamp"])
 filtered_df = raw_master_df[raw_master_df["league_country"] == selected_league_filter].reset_index(drop=True)
@@ -92,9 +93,9 @@ with col1: st.markdown(f'<div class="metric-card"><p class="metric-title">{selec
 with col2: st.markdown(f'<div class="metric-card"><p class="metric-title">Historic Average Home Goals</p><p class="metric-value">{filtered_df["home_goals"].mean():.2f}</p></div>', unsafe_allow_html=True)
 with col3: st.markdown(f'<div class="metric-card"><p class="metric-title">Historic Average Away Goals</p><p class="metric-value">{filtered_df["away_goals"].mean():.2f}</p></div>', unsafe_allow_html=True)
 st.markdown("---")
-# 4. Tab Initialization (Android Fixed Direct Unpack Pattern)
-# Completely avoids shared loops or tuple compression to clear mobile browser cache instantly
+# 4. Tab Initialization (Strict Position Slicing Pattern overrides sticky mobile memory)
 all_system_tabs = st.tabs(["📅 FUTURE PROJECTIONS", "🌍 LEAGUE TABLES", "📜 ARCHIVE ROLLING BACKTESTER", "🔴 LIVE CENTRE"])
+
 tab_pred    = all_system_tabs
 tab_tables  = all_system_tabs
 tab_history = all_system_tabs
@@ -207,7 +208,7 @@ with tab_pred:
                 "raw_matrix": np.zeros((max_score_cap + 1, max_score_cap + 1))
             }
 
-        # Safe parameter pairing matches the main_engine.py configuration variables perfectly
+        # Safe parameter pairing matches the main_engine.py configuration variables perfectly via strict keywords
         h_stats = engine.parse_live_team_averages(
             df=filtered_df, 
             team=target["home_team"], 
