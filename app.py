@@ -92,12 +92,13 @@ with col1: st.markdown(f'<div class="metric-card"><p class="metric-title">{selec
 with col2: st.markdown(f'<div class="metric-card"><p class="metric-title">Historic Average Home Goals</p><p class="metric-value">{filtered_df["home_goals"].mean():.2f}</p></div>', unsafe_allow_html=True)
 with col3: st.markdown(f'<div class="metric-card"><p class="metric-title">Historic Average Away Goals</p><p class="metric-value">{filtered_df["away_goals"].mean():.2f}</p></div>', unsafe_allow_html=True)
 st.markdown("---")
-# 4. Tab Initialization (Defensive Layout Design Pattern via explicit list slicing)
-all_tabs = st.tabs(["📅 FUTURE PROJECTIONS", "🌍 LEAGUE TABLES", "📜 ARCHIVE ROLLING BACKTESTER", "🔴 LIVE CENTRE"])
-tab_pred    = all_tabs
-tab_tables  = all_tabs
-tab_history = all_tabs
-tab_live    = all_tabs
+# 4. Tab Initialization (Android Fixed Direct Unpack Pattern)
+# Completely avoids shared loops or tuple compression to clear mobile browser cache instantly
+all_system_tabs = st.tabs(["📅 FUTURE PROJECTIONS", "🌍 LEAGUE TABLES", "📜 ARCHIVE ROLLING BACKTESTER", "🔴 LIVE CENTRE"])
+tab_pred    = all_system_tabs
+tab_tables  = all_system_tabs
+tab_history = all_system_tabs
+tab_live    = all_system_tabs
 
 # ---------------------------------------------------------------------
 # TAB 4: LIVE CENTRE MONITOR
