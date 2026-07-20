@@ -44,13 +44,15 @@ with st.sidebar:
     is_valid_data, uploaded_leagues = False, []
     if uploaded_file is not None:
         try:
-            sample_df = pd.read_csv(uploaded_file, nrows=5)
-            missing_cols = [col for col in REQUIRED_COLUMNS if col not in list(sample_df.columns)]
+            # Single-pass safe execution stream pattern prevents text reader tokenize token corruption
+            uploaded_file.seek(0)
+            full_validation_df = pd.read_csv(uploaded_file)
+            
+            missing_cols = [col for col in REQUIRED_COLUMNS if col not in list(full_validation_df.columns)]
             if len(missing_cols) == 0:
                 st.success("✅ MASTER SCHEMA VALID")
                 is_valid_data = True
-                uploaded_file.seek(0)  # Rewind buffer stream cleanly
-                uploaded_leagues = sorted(list(pd.read_csv(uploaded_file, usecols=["league_country"])["league_country"].dropna().unique()))
+                uploaded_leagues = sorted(list(full_validation_df["league_country"].dropna().unique()))
             else:
                 st.error("❌ MISSING SYMMETRICAL HEADERS")
                 for missing in missing_cols: st.code(f"⚠️ {missing}")
@@ -73,8 +75,8 @@ with st.sidebar:
     backtest_window = st.slider("Rolling Window Size (Days)", 90, 365, 180, 5)
 
 # 3. Data Ingestion & Scope Truncation
-uploaded_file.seek(0)
-raw_master_df = pd.read_csv(uploaded_file)
+# Bypasses ParserError by duplicating memory cache dataframe object directly
+raw_master_df = full_validation_df.copy()
 raw_master_df["match_timestamp"] = pd.to_datetime(raw_master_df["match_timestamp"])
 filtered_df = raw_master_df[raw_master_df["league_country"] == selected_league_filter].reset_index(drop=True)
 
@@ -204,7 +206,7 @@ with tab_pred:
                 "raw_matrix": np.zeros((max_score_cap + 1, max_score_cap + 1))
             }
 
-        # Fixed signature mapping using strict parameter keywords
+        # Safe parameter pairing matches the main_engine.py configuration variables perfectly
         h_stats = engine.parse_live_team_averages(
             df=filtered_df, 
             team=target["home_team"], 
