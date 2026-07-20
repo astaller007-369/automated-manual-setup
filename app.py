@@ -93,13 +93,9 @@ with col1: st.markdown(f'<div class="metric-card"><p class="metric-title">{selec
 with col2: st.markdown(f'<div class="metric-card"><p class="metric-title">Historic Average Home Goals</p><p class="metric-value">{filtered_df["home_goals"].mean():.2f}</p></div>', unsafe_allow_html=True)
 with col3: st.markdown(f'<div class="metric-card"><p class="metric-title">Historic Average Away Goals</p><p class="metric-value">{filtered_df["away_goals"].mean():.2f}</p></div>', unsafe_allow_html=True)
 st.markdown("---")
-# 4. Tab Initialization (Strict Position Slicing Pattern overrides sticky mobile memory)
-all_system_tabs = st.tabs(["📅 FUTURE PROJECTIONS", "🌍 LEAGUE TABLES", "📜 ARCHIVE ROLLING BACKTESTER", "🔴 LIVE CENTRE"])
-
-tab_pred    = all_system_tabs
-tab_tables  = all_system_tabs
-tab_history = all_system_tabs
-tab_live    = all_system_tabs
+# 4. Tab Initialization (Strict Inline Unpacking Pattern for Android Mobile Server)
+# Commas force Python to extract each container item sequentially out of the layout tuple
+tab_pred, tab_tables, tab_history, tab_live = st.tabs(["📅 FUTURE PROJECTIONS", "🌍 LEAGUE TABLES", "📜 ARCHIVE ROLLING BACKTESTER", "🔴 LIVE CENTRE"])
 
 # ---------------------------------------------------------------------
 # TAB 4: LIVE CENTRE MONITOR
