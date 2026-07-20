@@ -1,40 +1,137 @@
-# =====================================================================
-# SISONKE BET PREDICTIONS - STREAMLIT USER INTERFACE LAYER (SEGMENT 2)
-# =====================================================================
-tab_pred, tab_tables, tab_history, tab_live = st.tabs(["📅 FUTURE PROJECTIONS", "🌍 LEAGUE TABLES", "📜 ARCHIVE ROLLING BACKTESTER", "🔴 LIVE CENTRE"])
+import os
+import math
+import numpy as np
+import pandas as pd
+import streamlit as st
+import main_engine as engine
 
+# 1. Framework Base Configuration
+st.set_page_config(page_title="Sisonke Bet Predictions", page_icon="⚽", layout="wide")
+
+st.markdown("""
+    <style>
+    .stApp { background-color: #0b0f19; color: #f1f5f9; }
+    h1 { color: #facc15; font-weight: 900 !important; font-size: 42px !important; margin: 0; padding-bottom: 5px; }
+    h3 { color: #facc15; font-weight: 700 !important; margin-top: 25px !important; border-bottom: 1px solid #1e293b; padding-bottom: 5px; }
+    .metric-card { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 20px; border-radius: 12px; border: 1px solid #334155; text-align: center; }
+    .metric-title { font-size: 13px; font-weight: 600; text-transform: uppercase; color:#94a3b8; }
+    .metric-value { font-size: 28px; font-weight: 800; line-height: 1; margin-top: 5px; }
+    .market-header { color: #38bdf8; font-weight: 700; font-size: 15px; text-transform: uppercase; border-bottom: 2px solid #0284c7; margin-bottom: 12px; }
+    .ticket-box { background-color: #1e293b; border: 2px dashed #facc15; border-radius: 8px; padding: 15px; color: #f8fafc; font-family: monospace; }
+    </style>
+""", unsafe_allow_html=True)
+
+st.write("<h1>Sis⚽nke Bet Predictions</h1>", unsafe_allow_html=True)
+st.caption("Master Automation Suite - Full Multi-League Balanced Dixon-Coles Poisson Framework")
+
+# 2. Sidebar Controls & Validation Schema
+with st.sidebar:
+    st.markdown("### 📂 Data Control Room")
+    uploaded_file = st.file_uploader("Upload Master Match CSV", type=["csv"])
+    st.markdown("---")
+    st.markdown("### 🔍 Dataset Diagnostic Tool")
+    
+    REQUIRED_COLUMNS = [
+        "league_country", "match_timestamp", "home_team", "away_team", 
+        "home_goals", "away_goals", "home_shots", "away_shots", 
+        "home_sot", "away_sot", "home_big_chances", "away_big_chances",
+        "home_big_chances_missed", "away_big_chances_missed",
+        "home_counterattacks", "away_counterattacks",
+        "home_headed_goals", "away_headed_goals",
+        "home_avail_weight", "home_mot_weight", "home_coach_weight", "home_rest_days",
+        "away_avail_weight", "away_mot_weight", "away_coach_weight", "away_rest_days"
+    ]
+    is_valid_data, uploaded_leagues = False, []
+    if uploaded_file is not None:
+        try:
+            sample_df = pd.read_csv(uploaded_file, nrows=5)
+            missing_cols = [col for col in REQUIRED_COLUMNS if col not in list(sample_df.columns)]
+            if len(missing_cols) == 0:
+                st.success("✅ MASTER SCHEMA VALID")
+                is_valid_data = True
+                uploaded_leagues = sorted(list(pd.read_csv(uploaded_file, usecols=["league_country"])["league_country"].dropna().unique()))
+            else:
+                st.error("❌ MISSING SYMMETRICAL HEADERS")
+                for missing in missing_cols: st.code(f"⚠️ {missing}")
+        except Exception as e: st.error(f"Error: {e}")
+
+    if not is_valid_data or uploaded_file is None:
+        st.info("👋 Upload your balanced master data CSV file in the sidebar to activate systems.")
+        st.stop()
+
+    st.markdown("---")
+    st.markdown("### 🌍 Global Target Filter")
+    selected_league_filter = st.selectbox("Select Target Country:", uploaded_leagues)
+    st.markdown("---")
+    st.markdown("### ⚙️ Engine Parameter Adjustments")
+    half_life_days = st.slider("Time-Decay Half Life (Days)", 15, 90, 45, 1)
+    max_score_cap = st.slider("Matrix Score Simulation Ceiling", 4, 10, 6, 1)
+    vol_dampener = st.slider("Volatility Dampener (Smooth)", 0.5, 1.5, 1.0, 0.05)
+    st.markdown("---")
+    st.markdown("### 🔄 Backtest Range Configuration")
+    backtest_window = st.slider("Rolling Window Size (Days)", 90, 365, 180, 5)
+
+# 3. Data Ingestion & Scope Truncation
+raw_master_df = pd.read_csv(uploaded_file)
+raw_master_df["match_timestamp"] = pd.to_datetime(raw_master_df["match_timestamp"])
+filtered_df = raw_master_df[raw_master_df["league_country"] == selected_league_filter].reset_index(drop=True)
+
+if filtered_df.empty:
+    st.warning(f"No records match selected country target: '{selected_league_filter}'")
+    st.stop()
+
+all_teams = sorted(list(set(filtered_df["home_team"].unique()) | set(filtered_df["away_team"].unique())))
+total_records = len(filtered_df)
+
+m_cols = st.columns(3)
+with m_cols: st.markdown(f'<div class="metric-card"><p class="metric-title">{selected_league_filter.upper()} Total Records Loaded</p><p class="metric-value">{total_records}</p></div>', unsafe_allow_html=True)
+with m_cols: st.markdown(f'<div class="metric-card"><p class="metric-title">Historic Average Home Goals</p><p class="metric-value">{filtered_df["home_goals"].mean():.2f}</p></div>', unsafe_allow_html=True)
+with m_cols: st.markdown(f'<div class="metric-card"><p class="metric-title">Historic Average Away Goals</p><p class="metric-value">{filtered_df["away_goals"].mean():.2f}</p></div>', unsafe_allow_html=True)
+st.markdown("---")
+# 4. Tab Initialization (Defensive Layout Design Pattern to prevent Unpacking Error)
+all_tabs = st.tabs(["📅 FUTURE PROJECTIONS", "🌍 LEAGUE TABLES", "📜 ARCHIVE ROLLING BACKTESTER", "🔴 LIVE CENTRE"])
+tab_pred, tab_tables, tab_history, tab_live = all_tabs, all_tabs, all_tabs, all_tabs
+
+# ---------------------------------------------------------------------
+# TAB 4: LIVE CENTRE MONITOR
+# ---------------------------------------------------------------------
 with tab_live:
     st.info("Live data pipelines active. Processing balanced automated scraper telemetry feeds smoothly using Dixon-Coles parameters.")
 
+# ---------------------------------------------------------------------
+# TAB 2: LEAGUE TABLES GENERATOR
+# ---------------------------------------------------------------------
 with tab_tables:
     st.markdown(f"### Dynamic Standings Matrix: {selected_league_filter.upper()}")
     st.dataframe(engine.generate_dynamic_league_table(filtered_df), use_container_width=True)
 
+# ---------------------------------------------------------------------
+# TAB 3: ARCHIVE ROLLING BACKTESTER
+# ---------------------------------------------------------------------
 with tab_history:
     st.markdown("### 📜 Automated Rolling-Window Backtest & Mathematical Performance Validation")
     league_key = selected_league_filter.lower()
     baseline_goals = engine.COMPETITION_MATRIX.get(league_key, {"baseline_goals": 2.65}).get("baseline_goals", 2.65)
     
-    if activate_backtester:
-        with st.spinner("Processing Chronological Rolling-Window Validations..."):
-            backtest_results_df = engine.run_rolling_window_backtest(
-                df=filtered_df, baseline_goals=baseline_goals, window_days=backtest_window, evaluation_step_days=7, vol_dampener=vol_dampener
-            )
-            
-        if not backtest_results_df.empty:
-            avg_log_loss = backtest_results_df["log_loss"].mean()
-            tested_samples = len(backtest_results_df)
-            bc1, bc2 = st.columns(2)
-            loss_color = "#10b981" if avg_log_loss < 1.00 else ("#facc15" if avg_log_loss < 1.08 else "#ef4444")
-            with bc1: st.markdown(f'<div class="metric-card"><p class="metric-title">Evaluated Match Samples</p><p class="metric-value">{tested_samples}</p></div>', unsafe_allow_html=True)
-            with bc2: st.markdown(f'<div class="metric-card"><p class="metric-title" style="color:{loss_color};">Average Forecast Log-Loss</p><p class="metric-value" style="color:{loss_color};">{avg_log_loss:.4f}</p></div>', unsafe_allow_html=True)
-            st.markdown("#### Chronological Backtest Validation Ledger")
-            st.dataframe(backtest_results_df[["match_timestamp", "home_team", "away_team", "home_goals", "away_goals", "actual_outcome", "model_probability", "log_loss"]], use_container_width=True)
-        else:
-            st.warning("⚠️ Insufficient historical chronological date range to build the specified rolling window framework pool.")
+    with st.spinner("Processing Chronological Rolling-Window Validations..."):
+        backtest_results_df = engine.run_rolling_window_backtest(
+            df=filtered_df, baseline_goals=baseline_goals, window_days=backtest_window, evaluation_step_days=7, vol_dampener=vol_dampener
+        )
+        
+    if not backtest_results_df.empty:
+        avg_log_loss = backtest_results_df["log_loss"].mean()
+        tested_samples = len(backtest_results_df)
+        bc1, bc2 = st.columns(2)
+        loss_color = "#10b981" if avg_log_loss < 1.00 else ("#facc15" if avg_log_loss < 1.08 else "#ef4444")
+        with bc1: st.markdown(f'<div class="metric-card"><p class="metric-title">Evaluated Match Samples</p><p class="metric-value">{tested_samples}</p></div>', unsafe_allow_html=True)
+        with bc2: st.markdown(f'<div class="metric-card"><p class="metric-title" style="color:{loss_color};">Average Forecast Log-Loss</p><p class="metric-value" style="color:{loss_color};">{avg_log_loss:.4f}</p></div>', unsafe_allow_html=True)
+        st.markdown("#### Chronological Backtest Validation Ledger")
+        st.dataframe(backtest_results_df[["match_timestamp", "home_team", "away_team", "home_goals", "away_goals", "actual_outcome", "model_probability", "log_loss"]], use_container_width=True)
     else:
-        st.info("💡 To initiate mathematical log-loss optimization auditing, click and check the **'Run Historical Backtester'** parameter switch inside the left Sidebar Panel Room.")
-
+        st.warning("⚠️ Insufficient historical chronological date range to build the specified rolling window framework pool.")
+# ---------------------------------------------------------------------
+# TAB 1: FUTURE PROJECTIONS ENGINE
+# ---------------------------------------------------------------------
 with tab_pred:
     st.markdown("### 📋 Historic Database Overview")
     st.dataframe(filtered_df, use_container_width=True)
@@ -92,7 +189,7 @@ with tab_pred:
                 f"MATCH PROFILE : {target['home_team']} vs {target['away_team']}\n"
                 f"TIMESTAMP UTC : {target_ts.strftime('%Y-%m-%d %H:%M')}\n"
                 f"SQUAD ALIGN   : H: {home_status.upper()} | A: {away_status.upper()}\n"
-                f"H2H PSYCH BIAS: Home: {res['lambdas']['h2h_mods'][0]:.2f}x | Away: {res['lambdas']['h2h_mods'][1]:.2f}x\n"
+                f"H2H PSYCH BIAS: Home: {res['lambdas']['h2h_mods']:.2f}x | Away: {res['lambdas']['h2h_mods']:.2f}x\n"
                 f"----------------------------------------\n"
                 f"CALCULATED HOME EXPECTED (λ1) : {res['lambdas']['lam1_home']:.3f}\n"
                 f"CALCULATED AWAY EXPECTED (λ2) : {res['lambdas']['lam2_away']:.3f}\n"
@@ -102,18 +199,38 @@ with tab_pred:
                 f"MATCH DRAW PROBABILITY SPLIT  : {prob_draw*100:.1f}%\n"
                 f"AWAY WIN PROBABILITY SPLIT    : {prob_away*100:.1f}%\n"
                 f"========================================\n"
-                f"STATUS: AUTOMATED DRILL LAB LOG COMPLETE\n"
+                f"RECOMMENDED OPTIMAL BET TARGET : {res.get('optimal_bet_pick', 'N/A').upper()}\n"
+                f"MODEL STRUCT CONFIDENCE METRIC : {confidence_score}%\n"
+                f"========================================"
             )
-            st.text_area("Ticket Log Stream Output", value=ticket_txt, height=265)
-
-        st.markdown("### 🎲 Secondary Betting Markets & Exact Score Heatmap Matrix")
-        sec_col1, sec_col2 = st.columns()
-        with sec_col1:
-            st.markdown('<div class="market-header">Derived Proposition Markets</div>', unsafe_allow_html=True)
-            sm = res["secondary_markets"]
-            st.metric(label="Both Teams To Score (BTTS) - YES", value=f"{sm['BTTS_Yes'] * 100:.1f}%", delta=f"Fair Odds: {1/max(0.01, sm['BTTS_Yes']):.2f}")
-            st.metric(label="Home Team Clean Sheet", value=f"{sm['Home_CS'] * 100:.1f}%", delta=f"Fair Odds: {1/max(0.01, sm['Home_CS']):.2f}")
-            st.metric(label="Away Team Clean Sheet", value=f"{sm['Away_CS'] * 100:.1f}%", delta=f"Fair Odds: {1/max(0.01, sm['Away_CS']):.2f}")
-        with sec_col2:
-            st.markdown('<div class="market-header">Dixon-Coles Exact Score Matrix (%)</div>', unsafe_allow_html=True)
-            st.dataframe(pd.DataFrame(res["raw_matrix"] * 100, index=[f"Home {g}" for g in range(max_score_cap + 1)], columns=[f"Away {g}" for g in range(max_score_cap + 1)]).style.background_gradient(cmap="YlOrRd", axis=None).format("{:.2f}%"), use_container_width=True)
+            st.text_area("System Coupon Script Output", value=ticket_txt, height=360)
+            
+        st.markdown("### 📊 Live Structural Match Deep-Dive Metrics")
+        md1, md2 = st.columns(2)
+        with md1:
+            st.markdown('<p class="market-header">🏠 Home Attack & Defense Vector Breakdown</p>', unsafe_allow_html=True)
+            st.code(
+                f"Historical Samples Evaluated : {h_stats['games_played']}\n"
+                f"Calculated Attack Factor (α) : {h_stats['attack_rating']:.3f}\n"
+                f"Calculated Defense Factor (β): {h_stats['defense_rating']:.3f}\n"
+                f"Avg Goals (Scored / Conceded): {h_stats['avg_scored']:.2f} / {h_stats['avg_conceded']:.2f}\n"
+                f"Expected Shots on Target (SoT): {h_stats['avg_sot']:.2f}"
+            )
+        with md2:
+            st.markdown('<p class="market-header">🚀 Away Attack & Defense Vector Breakdown</p>', unsafe_allow_html=True)
+            st.code(
+                f"Historical Samples Evaluated : {a_stats['games_played']}\n"
+                f"Calculated Attack Factor (α) : {a_stats['attack_rating']:.3f}\n"
+                f"Calculated Defense Factor (β): {a_stats['defense_rating']:.3f}\n"
+                f"Avg Goals (Scored / Conceded): {a_stats['avg_scored']:.2f} / {a_stats['avg_conceded']:.2f}\n"
+                f"Expected Shots on Target (SoT): {a_stats['avg_sot']:.2f}"
+            )
+            
+        st.markdown("### 🧮 Dixon-Coles Probability Matrix Distribution Grid")
+        grid_matrix = res.get("full_score_matrix", np.zeros((max_score_cap, max_score_cap)))
+        grid_df = pd.DataFrame(
+            grid_matrix, 
+            index=[f"Home {i}" for i in range(max_score_cap)], 
+            columns=[f"Away {j}" for j in range(max_score_cap)]
+        )
+        st.dataframe(grid_df.style.format("{:.4f}").background_gradient(cmap="Blues"), use_container_width=True)
