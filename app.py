@@ -49,7 +49,7 @@ with st.sidebar:
             if len(missing_cols) == 0:
                 st.success("✅ MASTER SCHEMA VALID")
                 is_valid_data = True
-                uploaded_file.seek(0)  # Safe rewinding to ensure clear buffer reads
+                uploaded_file.seek(0)  # Rewind buffer stream cleanly
                 uploaded_leagues = sorted(list(pd.read_csv(uploaded_file, usecols=["league_country"])["league_country"].dropna().unique()))
             else:
                 st.error("❌ MISSING SYMMETRICAL HEADERS")
@@ -92,10 +92,10 @@ with col3: st.markdown(f'<div class="metric-card"><p class="metric-title">Histor
 st.markdown("---")
 # 4. Tab Initialization (Defensive Layout Design Pattern via explicit list slicing)
 all_tabs = st.tabs(["📅 FUTURE PROJECTIONS", "🌍 LEAGUE TABLES", "📜 ARCHIVE ROLLING BACKTESTER", "🔴 LIVE CENTRE"])
-tab_pred    = all_tabs[0]
-tab_tables  = all_tabs[1]
-tab_history = all_tabs[2]
-tab_live    = all_tabs[3]
+tab_pred    = all_tabs
+tab_tables  = all_tabs
+tab_history = all_tabs
+tab_live    = all_tabs
 
 # ---------------------------------------------------------------------
 # TAB 4: LIVE CENTRE MONITOR
@@ -204,8 +204,21 @@ with tab_pred:
                 "raw_matrix": np.zeros((max_score_cap + 1, max_score_cap + 1))
             }
 
-        h_stats = engine.parse_live_team_averages(filtered_df, target["home_team"], target_ts, half_life_days, status_override=home_status)
-        a_stats = engine.parse_live_team_averages(filtered_df, target["away_team"], target_ts, half_life_days, status_override=away_status)
+        # Fixed signature mapping using strict parameter keywords
+        h_stats = engine.parse_live_team_averages(
+            df=filtered_df, 
+            team=target["home_team"], 
+            current_ts=target_ts, 
+            half_life_days=half_life_days, 
+            status_override=home_status
+        )
+        a_stats = engine.parse_live_team_averages(
+            df=filtered_df, 
+            team=target["away_team"], 
+            current_ts=target_ts, 
+            half_life_days=half_life_days, 
+            status_override=away_status
+        )
         
         prob_home, prob_draw, prob_away = res["market_probabilities"]["1 (Home Win)"], res["market_probabilities"]["X (Draw)"], res["market_probabilities"]["2 (Away Win)"]
         sample_density = min(h_stats["games_played"], a_stats["games_played"])
@@ -232,7 +245,7 @@ with tab_pred:
                 f"MATCH PROFILE : {target['home_team']} vs {target['away_team']}\n"
                 f"TIMESTAMP UTC : {target_ts.strftime('%Y-%m-%d %H:%M')}\n"
                 f"SQUAD ALIGN   : H: {home_status.upper()} | A: {away_status.upper()}\n"
-                f"H2H PSYCH BIAS: Home: {res['lambdas']['h2h_mods'][0]:.2f}x | Away: {res['lambdas']['h2h_mods'][1]:.2f}x\n"
+                f"H2H PSYCH BIAS: Home: {res['lambdas']['h2h_mods']:.2f}x | Away: {res['lambdas']['h2h_mods']:.2f}x\n"
                 f"----------------------------------------\n"
                 f"CALCULATED HOME EXPECTED (λ1) : {res['lambdas']['lam1_home']:.3f}\n"
                 f"CALCULATED AWAY EXPECTED (λ2) : {res['lambdas']['lam2_away']:.3f}\n"
@@ -273,7 +286,7 @@ with tab_pred:
         grid_matrix = res.get("raw_matrix", np.zeros((max_score_cap + 1, max_score_cap + 1)))
         grid_df = pd.DataFrame(
             grid_matrix, 
-            index=[f"Home {i}" for i in range(grid_matrix.shape[0])], 
-            columns=[f"Away {j}" for j in range(grid_matrix.shape[1])]
+            index=[f"Home {i}" for i in range(grid_matrix.shape)], 
+            columns=[f"Away {j}" for j in range(grid_matrix.shape)]
         )
         st.dataframe(grid_df.style.format("{:.4f}").background_gradient(cmap="Blues"), use_container_width=True)
