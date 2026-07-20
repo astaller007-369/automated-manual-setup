@@ -49,6 +49,7 @@ with st.sidebar:
             if len(missing_cols) == 0:
                 st.success("✅ MASTER SCHEMA VALID")
                 is_valid_data = True
+                uploaded_file.seek(0) # Reset pointer after reading unique leagues
                 uploaded_leagues = sorted(list(pd.read_csv(uploaded_file, usecols=["league_country"])["league_country"].dropna().unique()))
             else:
                 st.error("❌ MISSING SYMMETRICAL HEADERS")
@@ -72,6 +73,8 @@ with st.sidebar:
     backtest_window = st.slider("Rolling Window Size (Days)", 90, 365, 180, 5)
 
 # 3. Data Ingestion & Scope Truncation
+# Fixes pandas.errors.EmptyDataError by rewinding file pointer before full ingestion
+uploaded_file.seek(0)
 raw_master_df = pd.read_csv(uploaded_file)
 raw_master_df["match_timestamp"] = pd.to_datetime(raw_master_df["match_timestamp"])
 filtered_df = raw_master_df[raw_master_df["league_country"] == selected_league_filter].reset_index(drop=True)
