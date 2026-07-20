@@ -86,10 +86,11 @@ if filtered_df.empty:
 all_teams = sorted(list(set(filtered_df["home_team"].unique()) | set(filtered_df["away_team"].unique())))
 total_records = len(filtered_df)
 
-m_cols = st.columns(3)
-with m_cols: st.markdown(f'<div class="metric-card"><p class="metric-title">{selected_league_filter.upper()} Total Records Loaded</p><p class="metric-value">{total_records}</p></div>', unsafe_allow_html=True)
-with m_cols: st.markdown(f'<div class="metric-card"><p class="metric-title">Historic Average Home Goals</p><p class="metric-value">{filtered_df["home_goals"].mean():.2f}</p></div>', unsafe_allow_html=True)
-with m_cols: st.markdown(f'<div class="metric-card"><p class="metric-title">Historic Average Away Goals</p><p class="metric-value">{filtered_df["away_goals"].mean():.2f}</p></div>', unsafe_allow_html=True)
+# Unpack layout containers explicitly to avoid "with m_cols" context crashes
+col1, col2, col3 = st.columns(3)
+with col1: st.markdown(f'<div class="metric-card"><p class="metric-title">{selected_league_filter.upper()} Total Records Loaded</p><p class="metric-value">{total_records}</p></div>', unsafe_allow_html=True)
+with col2: st.markdown(f'<div class="metric-card"><p class="metric-title">Historic Average Home Goals</p><p class="metric-value">{filtered_df["home_goals"].mean():.2f}</p></div>', unsafe_allow_html=True)
+with col3: st.markdown(f'<div class="metric-card"><p class="metric-title">Historic Average Away Goals</p><p class="metric-value">{filtered_df["away_goals"].mean():.2f}</p></div>', unsafe_allow_html=True)
 st.markdown("---")
 # 4. Tab Initialization (Defensive Layout Design Pattern to prevent Unpacking Error)
 all_tabs = st.tabs(["📅 FUTURE PROJECTIONS", "🌍 LEAGUE TABLES", "📜 ARCHIVE ROLLING BACKTESTER", "🔴 LIVE CENTRE"])
