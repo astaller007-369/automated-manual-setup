@@ -121,9 +121,25 @@ with tab_history:
     baseline_goals = engine.COMPETITION_MATRIX.get(league_key, {"baseline_goals": 2.65}).get("baseline_goals", 2.65)
     
     with st.spinner("Processing Chronological Rolling-Window Validations..."):
-        backtest_results_df = engine.run_rolling_window_backtest(
-            df=filtered_df, baseline_goals=baseline_goals, window_days=backtest_window, evaluation_step_days=7, vol_dampener=vol_dampener
-        )
+        # Wrapped in a defensive try-except context to isolate backend main_engine code failures safely
+        try:
+            backtest_results_df = engine.run_rolling_window_backtest(
+                df=filtered_df, 
+                baseline_goals=baseline_goals, 
+                window_days=backtest_window, 
+                evaluation_step_days=7, 
+                vol_dampener=vol_dampener
+            )
+        except TypeError as param_err:
+            st.error("❌ Backtester Parameter Mismatch Error!")
+            st.info("The dashboard layout parameters do not match your backend main_engine function signature definition.")
+            st.code(f"Trace Details: {param_err}")
+            backtest_results_df = pd.DataFrame()
+        except Exception as inner_err:
+            st.error("❌ Internal Engine Calculation Crash!")
+            st.info("The calculation script failed internally while filtering historical chronological dataframe matrix sequences.")
+            st.code(f"Trace Details: {inner_err}")
+            backtest_results_df = pd.DataFrame()
         
     if not backtest_results_df.empty:
         avg_log_loss = backtest_results_df["log_loss"].mean()
@@ -135,7 +151,7 @@ with tab_history:
         st.markdown("#### Chronological Backtest Validation Ledger")
         st.dataframe(backtest_results_df[["match_timestamp", "home_team", "away_team", "home_goals", "away_goals", "actual_outcome", "model_probability", "log_loss"]], use_container_width=True)
     else:
-        st.warning("⚠️ Insufficient historical chronological date range to build the specified rolling window framework pool.")
+        st.warning("⚠️ Insufficient historical chronological date range or script definition error inside the specified rolling window pool.")
 # ---------------------------------------------------------------------
 # TAB 1: FUTURE PROJECTIONS ENGINE
 # ---------------------------------------------------------------------
