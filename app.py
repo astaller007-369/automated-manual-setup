@@ -49,7 +49,7 @@ with st.sidebar:
             if len(missing_cols) == 0:
                 st.success("✅ MASTER SCHEMA VALID")
                 is_valid_data = True
-                uploaded_file.seek(0) # Reset pointer after reading unique leagues
+                uploaded_file.seek(0)  # Safe rewinding to ensure clear buffer reads
                 uploaded_leagues = sorted(list(pd.read_csv(uploaded_file, usecols=["league_country"])["league_country"].dropna().unique()))
             else:
                 st.error("❌ MISSING SYMMETRICAL HEADERS")
@@ -73,7 +73,6 @@ with st.sidebar:
     backtest_window = st.slider("Rolling Window Size (Days)", 90, 365, 180, 5)
 
 # 3. Data Ingestion & Scope Truncation
-# Fixes pandas.errors.EmptyDataError by rewinding file pointer before full ingestion
 uploaded_file.seek(0)
 raw_master_df = pd.read_csv(uploaded_file)
 raw_master_df["match_timestamp"] = pd.to_datetime(raw_master_df["match_timestamp"])
@@ -86,13 +85,12 @@ if filtered_df.empty:
 all_teams = sorted(list(set(filtered_df["home_team"].unique()) | set(filtered_df["away_team"].unique())))
 total_records = len(filtered_df)
 
-# Unpack layout containers explicitly to avoid "with m_cols" context crashes
 col1, col2, col3 = st.columns(3)
 with col1: st.markdown(f'<div class="metric-card"><p class="metric-title">{selected_league_filter.upper()} Total Records Loaded</p><p class="metric-value">{total_records}</p></div>', unsafe_allow_html=True)
 with col2: st.markdown(f'<div class="metric-card"><p class="metric-title">Historic Average Home Goals</p><p class="metric-value">{filtered_df["home_goals"].mean():.2f}</p></div>', unsafe_allow_html=True)
 with col3: st.markdown(f'<div class="metric-card"><p class="metric-title">Historic Average Away Goals</p><p class="metric-value">{filtered_df["away_goals"].mean():.2f}</p></div>', unsafe_allow_html=True)
 st.markdown("---")
-# 4. Tab Initialization (Explicit index separation syntax avoids layout unpacking object issues)
+# 4. Tab Initialization (Defensive Layout Design Pattern via explicit list slicing)
 all_tabs = st.tabs(["📅 FUTURE PROJECTIONS", "🌍 LEAGUE TABLES", "📜 ARCHIVE ROLLING BACKTESTER", "🔴 LIVE CENTRE"])
 tab_pred    = all_tabs[0]
 tab_tables  = all_tabs[1]
@@ -121,7 +119,6 @@ with tab_history:
     baseline_goals = engine.COMPETITION_MATRIX.get(league_key, {"baseline_goals": 2.65}).get("baseline_goals", 2.65)
     
     with st.spinner("Processing Chronological Rolling-Window Validations..."):
-        # Wrapped in a defensive try-except context to isolate backend main_engine code failures safely
         try:
             backtest_results_df = engine.run_rolling_window_backtest(
                 df=filtered_df, 
@@ -151,7 +148,7 @@ with tab_history:
         st.markdown("#### Chronological Backtest Validation Ledger")
         st.dataframe(backtest_results_df[["match_timestamp", "home_team", "away_team", "home_goals", "away_goals", "actual_outcome", "model_probability", "log_loss"]], use_container_width=True)
     else:
-        st.warning("⚠️ Insufficient historical chronological date range or script definition error inside the specified rolling window pool.")
+        st.warning("⚠️ Insufficient historical chronological date range to build the specified rolling window framework pool.")
 # ---------------------------------------------------------------------
 # TAB 1: FUTURE PROJECTIONS ENGINE
 # ---------------------------------------------------------------------
@@ -184,40 +181,27 @@ with tab_pred:
             distance_map = {"Short (No Penalty)": 1.00, "Moderate (-1%)": 0.99, "Long (-2%)": 0.98, "Continental (-4%)": 0.96}
             dynamic_distance_penalty = distance_map[distance_tier]
             
-        # Wrapped in a defensive try-except context to isolate backend main_engine code failures safely
         try:
             res = engine.predict_match_probabilities(
-                filtered_df, 
-                target["home_team"], 
-                target["away_team"], 
-                target_ts, 
-                baseline_goals, 
-                h_rest_days, 
-                a_rest_days, 
-                home_status, 
-                away_status, 
-                max_score_cap, 
-                vol_dampener
+                historical_matches=filtered_df, 
+                home_team=target["home_team"], 
+                away_team=target["away_team"], 
+                current_timestamp=target_ts, 
+                baseline_goals=baseline_goals, 
+                home_rest_days=h_rest_days, 
+                away_rest_days=a_rest_days, 
+                home_status=home_status, 
+                away_status=away_status, 
+                max_score=max_score_cap, 
+                vol_dampener=vol_dampener
             )
-        except TypeError as signature_err:
-            st.error("❌ Prediction Signature Mismatch!")
-            st.info("The configuration parameters pass format does not match the definition inside your main_engine.py file script.")
-            st.code(f"Trace Details: {signature_err}")
-            res = {
-                "market_probabilities": {"1 (Home Win)": 0.33, "X (Draw)": 0.34, "2 (Away Win)": 0.33},
-                "lambdas": {"h2h_mods": [1.0, 1.0], "lam1_home": 1.000, "lam2_away": 1.000, "dixon_coles_tau": 1.000},
-                "optimal_bet_pick": "N/A",
-                "full_score_matrix": np.zeros((max_score_cap, max_score_cap))
-            }
         except Exception as general_err:
-            st.error("❌ Calculation Matrix Runtime Computation Failure!")
-            st.info("The system backend module hit an unexpected error while calculating vector distributions.")
+            st.error("❌ Calculation Matrix Runtime Ingestion Failure!")
             st.code(f"Trace Details: {general_err}")
             res = {
                 "market_probabilities": {"1 (Home Win)": 0.33, "X (Draw)": 0.34, "2 (Away Win)": 0.33},
                 "lambdas": {"h2h_mods": [1.0, 1.0], "lam1_home": 1.000, "lam2_away": 1.000, "dixon_coles_tau": 1.000},
-                "optimal_bet_pick": "N/A",
-                "full_score_matrix": np.zeros((max_score_cap, max_score_cap))
+                "raw_matrix": np.zeros((max_score_cap + 1, max_score_cap + 1))
             }
 
         h_stats = engine.parse_live_team_averages(filtered_df, target["home_team"], target_ts, half_life_days, status_override=home_status)
@@ -239,6 +223,7 @@ with tab_pred:
             
         with c_right:
             st.markdown('<div class="market-header">🎫 Calibrated Betting Ticket Slip</div>', unsafe_allow_html=True)
+            derived_pick = "HOME WIN" if prob_home > prob_away and prob_home > prob_draw else ("AWAY WIN" if prob_away > prob_home and prob_away > prob_draw else "MATCH DRAW")
             ticket_txt = (
                 f"========================================\n"
                 f"        SISONKE BET ANALYTICS ENGINE    \n"
@@ -247,7 +232,7 @@ with tab_pred:
                 f"MATCH PROFILE : {target['home_team']} vs {target['away_team']}\n"
                 f"TIMESTAMP UTC : {target_ts.strftime('%Y-%m-%d %H:%M')}\n"
                 f"SQUAD ALIGN   : H: {home_status.upper()} | A: {away_status.upper()}\n"
-                f"H2H PSYCH BIAS: Home: {res['lambdas']['h2h_mods']:.2f}x | Away: {res['lambdas']['h2h_mods']:.2f}x\n"
+                f"H2H PSYCH BIAS: Home: {res['lambdas']['h2h_mods'][0]:.2f}x | Away: {res['lambdas']['h2h_mods'][1]:.2f}x\n"
                 f"----------------------------------------\n"
                 f"CALCULATED HOME EXPECTED (λ1) : {res['lambdas']['lam1_home']:.3f}\n"
                 f"CALCULATED AWAY EXPECTED (λ2) : {res['lambdas']['lam2_away']:.3f}\n"
@@ -257,7 +242,7 @@ with tab_pred:
                 f"MATCH DRAW PROBABILITY SPLIT  : {prob_draw*100:.1f}%\n"
                 f"AWAY WIN PROBABILITY SPLIT    : {prob_away*100:.1f}%\n"
                 f"========================================\n"
-                f"RECOMMENDED OPTIMAL BET TARGET : {res.get('optimal_bet_pick', 'N/A').upper()}\n"
+                f"RECOMMENDED OPTIMAL BET TARGET : {derived_pick}\n"
                 f"MODEL STRUCT CONFIDENCE METRIC : {confidence_score}%\n"
                 f"========================================"
             )
@@ -269,26 +254,26 @@ with tab_pred:
             st.markdown('<p class="market-header">🏠 Home Attack & Defense Vector Breakdown</p>', unsafe_allow_html=True)
             st.code(
                 f"Historical Samples Evaluated : {h_stats['games_played']}\n"
-                f"Calculated Attack Factor (α) : {h_stats['attack_rating']:.3f}\n"
-                f"Calculated Defense Factor (β): {h_stats['defense_rating']:.3f}\n"
-                f"Avg Goals (Scored / Conceded): {h_stats['avg_scored']:.2f} / {h_stats['avg_conceded']:.2f}\n"
-                f"Expected Shots on Target (SoT): {h_stats['avg_sot']:.2f}"
+                f"Calculated Attack Factor (α) : {h_stats['att_strength_goals']:.3f}\n"
+                f"Calculated Defense Factor (β): {h_stats['def_strength_goals']:.3f}\n"
+                f"Expected Shots Volume Factor : {h_stats['shots_factor']:.2f}\n"
+                f"Expected Shots on Target (SoT): {h_stats['sot_factor']:.2f}"
             )
         with md2:
             st.markdown('<p class="market-header">🚀 Away Attack & Defense Vector Breakdown</p>', unsafe_allow_html=True)
             st.code(
                 f"Historical Samples Evaluated : {a_stats['games_played']}\n"
-                f"Calculated Attack Factor (α) : {a_stats['attack_rating']:.3f}\n"
-                f"Calculated Defense Factor (β): {a_stats['defense_rating']:.3f}\n"
-                f"Avg Goals (Scored / Conceded): {a_stats['avg_scored']:.2f} / {a_stats['avg_conceded']:.2f}\n"
-                f"Expected Shots on Target (SoT): {a_stats['avg_sot']:.2f}"
+                f"Calculated Attack Factor (α) : {a_stats['att_strength_goals']:.3f}\n"
+                f"Calculated Defense Factor (β): {a_stats['def_strength_goals']:.3f}\n"
+                f"Expected Shots Volume Factor : {a_stats['shots_factor']:.2f}\n"
+                f"Expected Shots on Target (SoT): {a_stats['sot_factor']:.2f}"
             )
             
         st.markdown("### 🧮 Dixon-Coles Probability Matrix Distribution Grid")
-        grid_matrix = res.get("full_score_matrix", np.zeros((max_score_cap, max_score_cap)))
+        grid_matrix = res.get("raw_matrix", np.zeros((max_score_cap + 1, max_score_cap + 1)))
         grid_df = pd.DataFrame(
             grid_matrix, 
-            index=[f"Home {i}" for i in range(max_score_cap)], 
-            columns=[f"Away {j}" for j in range(max_score_cap)]
+            index=[f"Home {i}" for i in range(grid_matrix.shape[0])], 
+            columns=[f"Away {j}" for j in range(grid_matrix.shape[1])]
         )
         st.dataframe(grid_df.style.format("{:.4f}").background_gradient(cmap="Blues"), use_container_width=True)
