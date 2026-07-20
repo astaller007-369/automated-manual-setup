@@ -92,9 +92,12 @@ with col1: st.markdown(f'<div class="metric-card"><p class="metric-title">{selec
 with col2: st.markdown(f'<div class="metric-card"><p class="metric-title">Historic Average Home Goals</p><p class="metric-value">{filtered_df["home_goals"].mean():.2f}</p></div>', unsafe_allow_html=True)
 with col3: st.markdown(f'<div class="metric-card"><p class="metric-title">Historic Average Away Goals</p><p class="metric-value">{filtered_df["away_goals"].mean():.2f}</p></div>', unsafe_allow_html=True)
 st.markdown("---")
-# 4. Tab Initialization (Defensive Layout Design Pattern to prevent Unpacking Error)
+# 4. Tab Initialization (Explicit Index Assignment Design Pattern to resolve context crashes)
 all_tabs = st.tabs(["📅 FUTURE PROJECTIONS", "🌍 LEAGUE TABLES", "📜 ARCHIVE ROLLING BACKTESTER", "🔴 LIVE CENTRE"])
-tab_pred, tab_tables, tab_history, tab_live = all_tabs, all_tabs, all_tabs, all_tabs
+tab_pred    = all_tabs[0]
+tab_tables  = all_tabs[1]
+tab_history = all_tabs[2]
+tab_live    = all_tabs[3]
 
 # ---------------------------------------------------------------------
 # TAB 4: LIVE CENTRE MONITOR
